@@ -4,9 +4,12 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+
+import org.apache.http.impl.client.HttpClientBuilder;
 
 @Component
 public class Client {
@@ -14,6 +17,12 @@ public class Client {
 	private RestTemplate restTemplate =
 		new RestTemplateBuilder()
 			.defaultMessageConverters()
+			.requestFactory(new HttpComponentsClientHttpRequestFactory(
+				HttpClientBuilder.create()
+					.setMaxConnTotal(10000)
+					.setMaxConnPerRoute(500)
+					.build()
+			))
 			.errorHandler(new NoOpResponseErrorHandler())
 			.build();
 	

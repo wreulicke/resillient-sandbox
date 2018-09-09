@@ -27,7 +27,7 @@ public class ReactiveMyController {
 	}
 	
 	@GetMapping("/test")
-	public Observable<?> test() {
+	public Observable<ResponseEntity<?>> test() {
 		log.info("test start");
 		return reactiveClient.execute()
 			.flatMap(response -> {
@@ -40,8 +40,10 @@ public class ReactiveMyController {
 			.retryWhen(observable ->
 				observable.zipWith(Observable.range(0, 3), (e, i) -> i)
 					.flatMap(retryCount -> {
-						log.warn("request is failed. retrying...");
-						return Observable.timer((long) Math.pow(4, retryCount), TimeUnit.SECONDS);
+						return Observable.timer((long) Math.pow(4, retryCount), TimeUnit.SECONDS)
+							.doOnNext(aLong -> {
+								log.warn("request is failed. retrying...");
+							});
 					}))
 			.map(response -> {
 				if (response.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE.value()) {

@@ -135,6 +135,7 @@ dependencies {
   compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310"
 
   compile "org.zalando:logbook-spring-boot-starter:1.8.1"
+  compile "org.zalando:tracer-spring-boot-starter:0.17.0"
 
   compile "ch.qos.logback.contrib:logback-json-core:0.1.5"
   compile "ch.qos.logback.contrib:logback-json-classic:0.1.5"

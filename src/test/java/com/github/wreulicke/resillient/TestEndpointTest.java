@@ -66,7 +66,7 @@ public class TestEndpointTest {
 	public void test() {
 		wireMockRule.stubFor(WireMock.post("/").willReturn(WireMock.aResponse()
 			.withStatus(503)
-			.withFixedDelay(2000)));
+			.withFixedDelay(100)));
 		
 		Observable.range(0, 500)
 			.flatMap(ignore -> Observable.fromCallable(
@@ -82,7 +82,7 @@ public class TestEndpointTest {
 	@Test
 	public void test2() {
 		wireMockRule.stubFor(WireMock.post("/").willReturn(WireMock.aResponse()
-			.withStatus(503)
+			.withStatus(200)
 			.withFixedDelay(100)));
 		
 		Observable.range(0, 500)
