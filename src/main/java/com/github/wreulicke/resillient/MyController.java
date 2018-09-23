@@ -33,12 +33,12 @@ public class MyController {
 		int retryCount = 0;
 		
 		while (retryCount < 3) {
+			TimeUnit.SECONDS.sleep((long) Math.pow(2, retryCount));
 			entity = client.execute();
 			if (!entity.getStatusCode().equals(HttpStatus.SERVICE_UNAVAILABLE))
 				return ResponseEntity.ok(entity.getBody());
 			retryCount++;
 			log.warn("request is failed. retrying ...");
-			TimeUnit.SECONDS.sleep((long) Math.pow(4, retryCount));
 		}
 		
 		log.error("retry failed.");

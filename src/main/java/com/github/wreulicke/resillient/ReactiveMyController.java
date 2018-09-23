@@ -1,6 +1,7 @@
 package com.github.wreulicke.resillient;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.reactivex.Observable;
+import com.github.davidmoten.rx2.RetryWhen;
+
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 
 @RestController
@@ -27,29 +30,30 @@ public class ReactiveMyController {
 	}
 	
 	@GetMapping("/test")
-	public Observable<ResponseEntity<?>> test() {
+	public Single<ResponseEntity<String>> test() {
 		log.info("test start");
 		return reactiveClient.execute()
 			.flatMap(response -> {
 				int statusCode = response.getStatusCode();
 				if (statusCode == HttpStatus.SERVICE_UNAVAILABLE.value()) {
-					return Observable.error(new RetryableException());
+					return Single.error(new RetryableException());
 				}
-				return Observable.just(response);
+				return Single.just(response);
 			})
-			.retryWhen(observable ->
-				observable.zipWith(Observable.range(0, 3), (e, i) -> i)
-					.flatMap(retryCount -> {
-						return Observable.timer((long) Math.pow(4, retryCount), TimeUnit.SECONDS)
-							.doOnNext(aLong -> {
-								log.warn("request is failed. retrying...");
-							});
-					}))
+			.retryWhen(RetryWhen.exponentialBackoff(1, TimeUnit.SECONDS).build())
 			.map(response -> {
 				if (response.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE.value()) {
-					return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+					return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("error");
 				}
 				return ResponseEntity.ok(response.getResponseBody());
+			})
+			.timeout(10, TimeUnit.SECONDS)
+			.onErrorResumeNext(throwable -> {
+				log.info("error", throwable);
+				if (throwable instanceof TimeoutException) {
+					return Single.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build());
+				}
+				return Single.error(throwable);
 			})
 			.onErrorReturn(e -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("error"))
 			.observeOn(Schedulers.computation());

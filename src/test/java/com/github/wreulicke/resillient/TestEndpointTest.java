@@ -6,6 +6,7 @@ import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -43,8 +44,8 @@ public class TestEndpointTest {
 				.setMaxConnPerRoute(500)
 				.build()
 		))
-		.setConnectTimeout(0)
-		.setReadTimeout(0)
+		.setConnectTimeout(500000)
+		.setReadTimeout(500000)
 		.build();
 	
 	@MockBean
@@ -82,17 +83,32 @@ public class TestEndpointTest {
 	@Test
 	public void test2() {
 		wireMockRule.stubFor(WireMock.post("/").willReturn(WireMock.aResponse()
-			.withStatus(200)
+			.withStatus(503)
 			.withFixedDelay(100)));
 		
 		Observable.range(0, 500)
 			.flatMap(ignore -> Observable.fromCallable(
 				() -> {
 					log.info("requesting");
-					return testRestTemplate.getForObject("http://localhost:" + port + "/reactive/test",
+					return testRestTemplate.getForEntity("http://localhost:" + port + "/reactive/test",
 						String.class);
 				})
 				.subscribeOn(Schedulers.newThread()))
-			.blockingSubscribe();
+			.blockingSubscribe(entity -> {
+				if (!entity.getStatusCode().equals(HttpStatus.SERVICE_UNAVAILABLE)) {
+					log.error("error: {}", entity);
+				}
+			});
+		
+		log.info("exit");
+	}
+	
+	@Test
+	public void test3() {
+		wireMockRule.stubFor(WireMock.post("/").willReturn(WireMock.aResponse()
+			.withStatus(503)
+			.withFixedDelay(100)));
+		
+		testRestTemplate.getForObject("http://localhost:" + port + "/reactive/test", String.class);
 	}
 }

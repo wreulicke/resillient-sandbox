@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
 
-import io.reactivex.Observable;
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 
 @Component
@@ -27,11 +27,11 @@ public class ReactiveClient {
 	}
 	
 	
-	public Observable<Response> execute() {
+	public Single<Response> execute() {
 		String url = otherSystemClientProperties.getUri().toString();
-		return Observable.defer(() -> {
+		return Single.defer(() -> {
 			log.info("request start");
-			return Observable.fromFuture(client.preparePost(url).execute());
+			return Single.fromFuture(client.preparePost(url).execute());
 		})
 			.subscribeOn(Schedulers.io());
 	}
