@@ -23,13 +23,13 @@
  */
 package com.github.wreulicke.resillient;
 
+
 import java.net.URI;
 
 import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -55,9 +55,9 @@ import io.reactivex.schedulers.Schedulers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @RunWith(SpringRunner.class)
 @TestPropertySource(properties = "")
-public class TestEndpointTest {
+public class Resillience4jEndpointTest {
 
-  private static final Logger log = LoggerFactory.getLogger(TestEndpointTest.class);
+  private static final Logger log = LoggerFactory.getLogger(Resillience4jEndpointTest.class);
 
   RestTemplate testRestTemplate = new RestTemplateBuilder().errorHandler(new Client.NoOpResponseErrorHandler())
     .requestFactory(new HttpComponentsClientHttpRequestFactory(HttpClientBuilder.create()
@@ -92,44 +92,9 @@ public class TestEndpointTest {
         .withFixedDelay(100)));
 
     Observable.range(0, 500)
-      .flatMap(ignore -> Observable.fromCallable(() -> {
-        log.info("requesting");
-        return testRestTemplate.getForObject("http://localhost:" + port + "/traditional/test", String.class);
-      })
+      .flatMap(ignore -> Observable.fromCallable(() -> testRestTemplate.getForEntity("http://localhost:" + port + "/resilience4j/test", String.class))
         .subscribeOn(Schedulers.newThread()))
       .blockingSubscribe();
-  }
 
-  @Test
-  public void test2() {
-    wireMockRule.stubFor(WireMock.post("/")
-      .willReturn(WireMock.aResponse()
-        .withStatus(503)
-        .withFixedDelay(100)));
-
-    Observable.range(0, 500)
-      .flatMap(ignore -> Observable.fromCallable(() -> {
-        log.info("requesting");
-        return testRestTemplate.getForEntity("http://localhost:" + port + "/reactive/test", String.class);
-      })
-        .subscribeOn(Schedulers.newThread()))
-      .blockingSubscribe(entity -> {
-        if (!entity.getStatusCode()
-          .equals(HttpStatus.SERVICE_UNAVAILABLE)) {
-          log.error("error: {}", entity);
-        }
-      });
-
-    log.info("exit");
-  }
-
-  @Test
-  public void test3() {
-    wireMockRule.stubFor(WireMock.post("/")
-      .willReturn(WireMock.aResponse()
-        .withStatus(503)
-        .withFixedDelay(100)));
-
-    testRestTemplate.getForObject("http://localhost:" + port + "/reactive/test", String.class);
   }
 }

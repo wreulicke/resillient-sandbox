@@ -23,11 +23,13 @@
  */
 package com.github.wreulicke.resillient;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,24 +39,42 @@ import org.slf4j.LoggerFactory;
 
 import com.github.davidmoten.rx2.RetryWhen;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerOpenException;
+import io.github.resilience4j.circuitbreaker.operator.CircuitBreakerOperator;
+import io.reactivex.Flowable;
 import io.reactivex.Single;
+import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 @RestController
-@RequestMapping("/reactive")
-public class ReactiveMyController {
+@RequestMapping("/resilience4j")
+public class Resilience4jController {
 
   private final ReactiveClient reactiveClient;
 
-  private static final Logger log = LoggerFactory.getLogger(ReactiveMyController.class);
+  private static final Logger log = LoggerFactory.getLogger(Resilience4jController.class);
 
-  public ReactiveMyController(ReactiveClient reactiveClient) {
+  private final CircuitBreaker circuitBreaker = CircuitBreaker.of("test", CircuitBreakerConfig.custom()
+    .failureRateThreshold(3)
+    .ringBufferSizeInClosedState(20)
+    .ringBufferSizeInHalfOpenState(5)
+    .waitDurationInOpenState(Duration.ofSeconds(5))
+    .build());
+
+  private final Function<Flowable<? extends Throwable>, Flowable<Object>> exponentialBackoffRetrier = RetryWhen.exponentialBackoff(1,
+    TimeUnit.SECONDS)
+    .retryWhenInstanceOf(RetryableException.class)
+    .maxRetries(3)
+    .build();
+
+  public Resilience4jController(ReactiveClient reactiveClient) {
     this.reactiveClient = reactiveClient;
   }
 
   @GetMapping("/test")
   public Single<ResponseEntity<String>> test() {
-    log.info("test start");
     return reactiveClient.execute()
       .flatMap(response -> {
         int statusCode = response.getStatusCode();
@@ -63,28 +83,18 @@ public class ReactiveMyController {
         }
         return Single.just(response);
       })
-      .retryWhen(RetryWhen.exponentialBackoff(1, TimeUnit.SECONDS)
-        .retryWhenInstanceOf(RetryableException.class)
-        .maxRetries(3)
-        .build())
-      .map(response -> {
-        if (response.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE.value()) {
-          return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body("error");
-        }
-        return ResponseEntity.ok(response.getResponseBody());
-      })
+      .lift(CircuitBreakerOperator.of(circuitBreaker))
+      .retryWhen(exponentialBackoffRetrier)
+      .map(response -> ResponseEntity.ok(response.getResponseBody()))
       .timeout(10, TimeUnit.SECONDS)
-      .onErrorResumeNext(throwable -> {
-        if (throwable instanceof TimeoutException) {
-          return Single.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-            .build());
-        }
-        return Single.error(throwable);
-      })
-      .onErrorReturn(e -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body("error"))
       .observeOn(Schedulers.computation());
   }
 
+  @ExceptionHandler({
+    TimeoutException.class, CircuitBreakerOpenException.class, RetryableException.class
+  })
+  public ResponseEntity<String> errorHandler() {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+      .body("Service Unavailable");
+  }
 }
