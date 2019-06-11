@@ -1,6 +1,6 @@
 buildscript {
   ext {
-    springBootVersion = "2.1.2.RELEASE"
+    springBootVersion = "2.1.5.RELEASE"
   }
   repositories {
     jcenter()
@@ -11,7 +11,6 @@ buildscript {
     classpath "com.diffplug.spotless:spotless-plugin-gradle:3.13.0"
     classpath "de.thetaphi:forbiddenapis:2.5"
     classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.6.2"
-    classpath "io.spring.gradle:dependency-management-plugin:1.0.4.RELEASE"
   }
 }
 
@@ -108,9 +107,6 @@ bootRun {
   }
 }
 
-dependencyManagement {
-}
-
 
 dependencies {
   compile "org.springframework.boot:spring-boot-starter-actuator"
@@ -124,11 +120,10 @@ dependencies {
   compile "org.asynchttpclient:async-http-client-extras-rxjava:2.5.3"
 
   compile 'io.reactivex.rxjava2:rxjava:2.2.1'
-  compile 'io.jmnarloch:rxjava-spring-boot-starter:2.0.0'
   compile 'com.github.davidmoten:rxjava2-extras:0.1.26'
-  compile 'io.github.resilience4j:resilience4j-all:0.13.1'
-  compile 'io.github.resilience4j:resilience4j-spring-boot:0.13.1'
-  compile 'io.github.resilience4j:resilience4j-rxjava2:0.13.1'
+  compile 'io.github.resilience4j:resilience4j-all:0.15.0'
+  compile 'io.github.resilience4j:resilience4j-spring-boot2:0.15.0'
+  compile 'io.github.resilience4j:resilience4j-rxjava2:0.15.0'
 
   compile "org.springframework.cloud:spring-cloud-netflix-concurrency-limits:2.1.0.RELEASE"
   compile 'com.squareup.okhttp3:okhttp:3.12.1'

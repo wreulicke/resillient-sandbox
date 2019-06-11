@@ -38,7 +38,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 public class Client {
 
   private RestTemplate restTemplate = new RestTemplateBuilder().defaultMessageConverters()
-    .requestFactory(new HttpComponentsClientHttpRequestFactory(HttpClientBuilder.create()
+    .requestFactory(() -> new HttpComponentsClientHttpRequestFactory(HttpClientBuilder.create()
       .setMaxConnTotal(10000)
       .setMaxConnPerRoute(500)
       .build()))

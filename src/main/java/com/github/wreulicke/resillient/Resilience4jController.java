@@ -37,8 +37,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.asynchttpclient.Response;
+
 import com.github.davidmoten.rx2.RetryWhen;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerOpenException;
@@ -83,7 +86,7 @@ public class Resilience4jController {
         }
         return Single.just(response);
       })
-      .lift(CircuitBreakerOperator.of(circuitBreaker))
+      .compose(CircuitBreakerOperator.of(circuitBreaker))
       .retryWhen(exponentialBackoffRetrier)
       .map(response -> ResponseEntity.ok(response.getResponseBody()))
       .timeout(10, TimeUnit.SECONDS)
@@ -91,7 +94,7 @@ public class Resilience4jController {
   }
 
   @ExceptionHandler({
-    TimeoutException.class, CircuitBreakerOpenException.class, RetryableException.class
+    TimeoutException.class, CallNotPermittedException.class, RetryableException.class
   })
   public ResponseEntity<String> errorHandler() {
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
