@@ -55,46 +55,45 @@ import io.reactivex.schedulers.Schedulers;
 @RunWith(SpringRunner.class)
 @TestPropertySource(properties = "")
 public class Resillience4jEndpointTest {
-	
-	private static final Logger log = LoggerFactory.getLogger(Resillience4jEndpointTest.class);
-	
-	RestTemplate testRestTemplate = new RestTemplateBuilder().errorHandler(new Client.NoOpResponseErrorHandler())
-		.requestFactory(() -> new HttpComponentsClientHttpRequestFactory(HttpClientBuilder.create()
-			.setMaxConnTotal(10000)
-			.setMaxConnPerRoute(500)
-			.build()))
-		.setConnectTimeout(500000)
-		.setReadTimeout(500000)
-		.build();
-	
-	@MockBean
-	OtherSystemClientProperties otherSystemClientProperties;
-	
-	@Rule
-	public WireMockRule wireMockRule = new WireMockRule(WireMockConfiguration.wireMockConfig()
-		.dynamicPort());
-	
-	@LocalServerPort
-	int port;
-	
-	@Before
-	public void setUp() {
-		Mockito.when(otherSystemClientProperties.getUri())
-			.thenReturn(URI.create("http://localhost:" + wireMockRule.port()));
-	}
-	
-	@Test
-	public void test() {
-		wireMockRule.stubFor(WireMock.post("/")
-			.willReturn(WireMock.aResponse()
-				.withStatus(503)
-				.withFixedDelay(100)));
-		
-		Observable.range(0, 500)
-			.flatMap(ignore -> Observable.fromCallable(
-				() -> testRestTemplate.getForEntity("http://localhost:" + port + "/resilience4j/test", String.class))
-				.subscribeOn(Schedulers.newThread()))
-			.blockingSubscribe();
-		
-	}
+
+  private static final Logger log = LoggerFactory.getLogger(Resillience4jEndpointTest.class);
+
+  RestTemplate testRestTemplate = new RestTemplateBuilder().errorHandler(new Client.NoOpResponseErrorHandler())
+    .requestFactory(() -> new HttpComponentsClientHttpRequestFactory(HttpClientBuilder.create()
+      .setMaxConnTotal(10000)
+      .setMaxConnPerRoute(500)
+      .build()))
+    .setConnectTimeout(500000)
+    .setReadTimeout(500000)
+    .build();
+
+  @MockBean
+  OtherSystemClientProperties otherSystemClientProperties;
+
+  @Rule
+  public WireMockRule wireMockRule = new WireMockRule(WireMockConfiguration.wireMockConfig()
+    .dynamicPort());
+
+  @LocalServerPort
+  int port;
+
+  @Before
+  public void setUp() {
+    Mockito.when(otherSystemClientProperties.getUri())
+      .thenReturn(URI.create("http://localhost:" + wireMockRule.port()));
+  }
+
+  @Test
+  public void test() {
+    wireMockRule.stubFor(WireMock.post("/")
+      .willReturn(WireMock.aResponse()
+        .withStatus(503)
+        .withFixedDelay(100)));
+
+    Observable.range(0, 500)
+      .flatMap(ignore -> Observable.fromCallable(() -> testRestTemplate.getForEntity("http://localhost:" + port + "/resilience4j/test", String.class))
+        .subscribeOn(Schedulers.newThread()))
+      .blockingSubscribe();
+
+  }
 }

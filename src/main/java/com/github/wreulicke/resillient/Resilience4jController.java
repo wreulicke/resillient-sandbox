@@ -37,14 +37,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.asynchttpclient.Response;
-
 import com.github.davidmoten.rx2.RetryWhen;
 
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerOpenException;
 import io.github.resilience4j.circuitbreaker.operator.CircuitBreakerOperator;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
